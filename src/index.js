@@ -5,7 +5,7 @@ const createContextCreator = require('./context.js');
 const { validator: createTokenValidator, generator: createTokenGenerator } = require('./token.js');
 const loadMasterData = require('./master-data-loader.js');
 
-function createService({ schema, loadIssuerData, contextOptions, serviceKeyOptions, fetchSigningKeyDebounce, masterData }) {
+async function createService({ schema, loadIssuerData, contextOptions, serviceKeyOptions, fetchSigningKeyDebounce, masterData }) {
     const INTERNAL_USER = Symbol('internal-user');
     const INTERNAL_ISSUER = Symbol('internal-issuer');
 
