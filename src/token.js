@@ -80,6 +80,7 @@ function createGenerator({ issued, issuedTypeName = 'IssuedServiceKey', debounce
 
     async function search() {
         let connection = await resolver(issued.getType(issuedTypeName), 'list', {
+            first: 1,
             order: [{ field: 'created', desc: true }]
         });
         if (connection.edges.length === 0) {
