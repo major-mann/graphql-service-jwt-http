@@ -1,4 +1,4 @@
-async function loadData({ schema, resolver, data }) {
+module.exports = async function loadData({ schema, resolver, data }) {
     if (data == undefined) {
         return;
     }
