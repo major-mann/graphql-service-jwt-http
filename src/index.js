@@ -1,11 +1,17 @@
-module.exports = createService;
+module.exports = createServiceContextCreator;
 
 const serviceHelper = require('@major-mann/graphql-helpers-service');
-const createContextCreator = require('./context.js');
+const createContextCreator = require('./context.js.js');
 const { validator: createTokenValidator, generator: createTokenGenerator } = require('./token.js');
-const loadMasterData = require('./master-data-loader.js');
+const loadMasterData = require('./master-data-loader.js.js');
 
-async function createService({ schema, loadIssuerData, contextOptions, serviceKeyOptions, fetchSigningKeyDebounce, masterData }) {
+async function createServiceContextCreator({ schema,
+                                             loadIssuerData,
+                                             contextOptions,
+                                             serviceKeyOptions,
+                                             fetchSigningKeyDebounce,
+                                             masterData }) {
+
     const INTERNAL_USER = Symbol('internal-user');
     const INTERNAL_ISSUER = Symbol('internal-issuer');
 
@@ -34,6 +40,9 @@ async function createService({ schema, loadIssuerData, contextOptions, serviceKe
 
     const createContext = createContextCreator({
         ...contextOptions,
+        INTERNAL_ISSUER,
+        INTERNAL_USER,
+        resolver,
         verifyRequestToken: tokenValidator,
         generateToken: (issuer, claims) => tokenGenerator({
             ...claims,
@@ -49,16 +58,7 @@ async function createService({ schema, loadIssuerData, contextOptions, serviceKe
         });
     }
 
-    return {
-        resolver,
-        createContext,
-        token: {
-            validate: (token, context) => tokenValidator(token, context || createInternalContext()),
-            generate: (claims, options) => tokenGenerator(claims, options),
-        },
-        isInternalUser: sub => sub === INTERNAL_USER,
-        isInternalIssuer: iss => iss === INTERNAL_ISSUER
-    };
+    return createContext;
 
     function createInternalContext() {
         const user = {
