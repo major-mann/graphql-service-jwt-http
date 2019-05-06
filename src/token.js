@@ -11,7 +11,7 @@ function createValidator({ accepted,
                            loadIssuerData,
                            acceptedTypeName = 'AcceptedServiceKeyQuery',
                            issuedTypeName = 'IssuedServiceKeyQuery' }) {
-    return function validator(token, context) {
+    return async function validator(token, context) {
         const decoded = jwt.decode(token, { complete: true });
 
         let key;
