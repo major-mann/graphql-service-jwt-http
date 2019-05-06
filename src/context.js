@@ -1,17 +1,15 @@
-module.exports = createContextCreator
-
-function createContextCreator({ resolver,
-                                verifyRequestToken,
-                                generateToken,
-                                laxTokenHeader,
-                                queryTokenName = 'token',
-                                bodyTokenName = 'token',
-                                authorizationHeaderName = 'authorization',
-                                tokenTypeName = 'bearer',
-                                createLogger = defaultCreateLogger,
-                                createStat = defaultCreateStat,
-                                INTERNAL_USER,
-                                INTERNAL_ISSUER
+module.exports = function createContextCreator({ resolver,
+                                                 verifyRequestToken,
+                                                 generateToken,
+                                                 laxTokenHeader,
+                                                 queryTokenName = 'token',
+                                                 bodyTokenName = 'token',
+                                                 authorizationHeaderName = 'authorization',
+                                                 tokenTypeName = 'bearer',
+                                                 createLogger = defaultCreateLogger,
+                                                 createStat = defaultCreateStat,
+                                                 INTERNAL_USER,
+                                                 INTERNAL_ISSUER
 }) {
     return function createContext({ req }) {
         const issuer = determineIssuer(req);

@@ -1,9 +1,9 @@
 module.exports = createServiceContextCreator;
 
 const serviceHelper = require('@major-mann/graphql-helpers-service');
-const createContextCreator = require('./context.js.js');
+const createContextCreator = require('./context.js');
 const { validator: createTokenValidator, generator: createTokenGenerator } = require('./token.js');
-const loadMasterData = require('./master-data-loader.js.js');
+const loadMasterData = require('./master-data-loader.js');
 
 async function createServiceContextCreator({ schema,
                                              loadIssuerData,
