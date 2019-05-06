@@ -11,7 +11,7 @@ module.exports = async function loadData({ schema, resolver, data }) {
         await Promise.all(data[typeName].map(entry => processDataEntry(type, entry)));
     }
 
-    function processDataEntry(type, entry) {
+    async function processDataEntry(type, entry) {
         const args = {
             ...entry.key,
             data: entry.data
