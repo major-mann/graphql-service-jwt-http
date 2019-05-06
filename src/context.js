@@ -11,7 +11,7 @@ module.exports = function createContextCreator({ resolver,
                                                  INTERNAL_USER,
                                                  INTERNAL_ISSUER
 }) {
-    return function createContext({ req }) {
+    return async function createContext({ req }) {
         const issuer = determineIssuer(req);
         const checks = {
             body: bodyTokenName && req.body && req.body[bodyTokenName],
