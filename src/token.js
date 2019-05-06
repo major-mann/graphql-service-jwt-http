@@ -31,6 +31,12 @@ function createValidator({ accepted,
         if (typeof mask === 'function') {
             claims = await mask(claims);
         }
+        if (info && info.claims) {
+            claims = {
+                claims,
+                ...info.claims
+            };
+        }
         return claims;
 
         function search(type) {
