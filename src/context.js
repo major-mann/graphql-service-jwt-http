@@ -20,6 +20,7 @@ module.exports = function createContextCreator({ resolver,
                 req.headers[authorizationHeaderName] &&
                 extractBearer(req.headers[authorizationHeaderName])
         };
+
         let user;
         for (const [source, token] of Object.entries(checks)) {
             if (!token) {
@@ -42,17 +43,18 @@ module.exports = function createContextCreator({ resolver,
             isInternalIssuer: iss => iss === INTERNAL_ISSUER,
             token: {
                 generate: (claims, options) => generateToken(issuer, claims, options),
-                verify: token => verifyRequestToken(token, context)
+                verify: token => verifyRequestToken(token)
             }
         };
+
         return context;
 
         async function verifyToken(source, token) {
             try {
-                const claims = await verifyRequestToken(token, context);
+                const claims = await verifyRequestToken(token);
                 return claims;
             } catch (ex) {
-                log.debug(`Invalid token "${req.body[bodyTokenName]}" received in ${source}. ${ex.stack}`);
+                createLogger(req).debug(`Invalid token "${token}" received in ${source}. ${ex.stack}`);
                 return false;
             }
         }

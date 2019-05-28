@@ -4,22 +4,34 @@ module.exports = {
 };
 
 const jwt = require('jsonwebtoken');
+const jwkToPem = require('jwk-to-pem');
+const debounce = require('lodash.debounce');
 
 function createValidator({ accepted,
                            issued,
                            resolver,
                            loadIssuerData,
+                           debounceTime = 0,
                            acceptedTypeName = 'AcceptedServiceKeyQuery',
                            issuedTypeName = 'IssuedServiceKeyQuery' }) {
-    return async function validator(token, context) {
+
+    const debouncedFindSigningKey = debounce(findSigningKey, debounceTime);
+    const signingTypes = {
+        issued: issued.getType(issuedTypeName),
+        accepted: accepted.getType(acceptedTypeName)
+    };
+
+    return validator;
+
+    async function validator(token) {
         const decoded = jwt.decode(token, { complete: true });
 
         let key;
-        if (accepted) {
-            key = await search(accepted.getType(acceptedTypeName));
+        if (signingTypes.accepted) {
+            key = await debouncedFindSigningKey('accepted', token.header.kid || token.payload.kid, token.payload.iss);
         }
         if (!key && issued) {
-            key = await search(issued.getType(issuedTypeName));
+            key = await debouncedFindSigningKey('issued', token.header.kid || token.payload.kid, token.payload.iss);
         }
         if (!key) {
             throw new Error('key not found in accepted or issued schemas')
@@ -39,28 +51,35 @@ function createValidator({ accepted,
         }
         return claims;
 
-        function search(type) {
-            return resolver(type, 'find', {
-                kid: decoded.header.kid || decoded.payload.kid,
-                iss: decoded.payload.iss
-            });
-        }
-
         async function issuerData() {
             if (typeof loadIssuerData === 'function') {
-                const data = await loadIssuerData(decoded.payload.iss, context);
+                const data = await loadIssuerData(decoded.payload.iss);
                 return data;
             } else {
                 return undefined;
             }
         }
     };
+
+    async function findSigningKey(type, kid, iss) {
+        const key = await resolver(signingTypes[type], 'find', {
+            kid,
+            iss
+        });
+        if (key) {
+            key = jwkToPem(key);
+        }
+        return key;
+    }
 }
 
-function createGenerator({ issued, issuedTypeName = 'IssuedServiceKey', debounceTime = 0 }) {
-    let debounce;
-    return async function generate(claims, options) {
-        const key = await debouncedSearch();
+function createGenerator({ issued, issuedTypeName = 'IssuedServiceKey', debounceTime = 0, resolver }) {
+    const keyType = issued.getType(issuedTypeName);
+    const debouncedGetLatestKey = debounce(getLatestKey, debounceTime);
+    return generate;
+
+    async function generate(claims, options) {
+        const key = await debouncedGetLatestKey();
 
         const now = Math.floor(Date.now() / 1000);
         claims = {
@@ -72,27 +91,19 @@ function createGenerator({ issued, issuedTypeName = 'IssuedServiceKey', debounce
         return tokenData;
     };
 
-    async function debouncedSearch() {
-        if (!debounceTime) {
-            return search();
-        }
-        if (debounce) {
-            return debounce;
-        }
-        debounce = search();
-        setTimeout(() => debounce = undefined, debounceTime);
-        return debounce;
-    }
-
-    async function search() {
-        let connection = await resolver(issued.getType(issuedTypeName), 'list', {
+    async function getLatestKey() {
+        let connection = await resolver(keyType, 'list', {
             first: 1,
             order: [{ field: 'created', desc: true }]
         });
         if (connection.edges.length === 0) {
-            throw new Error(`Unable to find key to sign with in ${issuedTypeName}`);
+            throw new Error(`Unable to find key to sign with!`);
         }
-        return connected.edges[0].node;
+        if (connected.edges.length) {
+            return jwkToPem(connected.edges[0].node, { private: true });
+        } else {
+            return undefined;
+        }
     }
 }
 

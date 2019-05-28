@@ -69,6 +69,8 @@ async function createServiceContextCreator({ schema,
             user,
             issuer: undefined,
             log: createLogger(undefined, user),
+            isInternalUser: sub => sub === INTERNAL_USER,
+            isInternalIssuer: iss => iss === INTERNAL_ISSUER,
             stat: {
                 increment: () => undefined,
                 decrement: () => undefined,
