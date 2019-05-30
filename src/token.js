@@ -28,10 +28,10 @@ function createValidator({ accepted,
 
         let key;
         if (signingTypes.accepted) {
-            key = await debouncedFindSigningKey('accepted', token.header.kid || token.payload.kid, token.payload.iss);
+            key = await debouncedFindSigningKey('accepted', decoded.header.kid || decoded.payload.kid, decoded.payload.iss);
         }
         if (!key && issued) {
-            key = await debouncedFindSigningKey('issued', token.header.kid || token.payload.kid, token.payload.iss);
+            key = await debouncedFindSigningKey('issued', decoded.header.kid || decoded.payload.kid, decoded.payload.iss);
         }
         if (!key) {
             throw new Error('key not found in accepted or issued schemas')
