@@ -3,35 +3,50 @@ module.exports = {
     generator: createGenerator
 };
 
+const SERVICE_KEY_FIELDS = `
+    iss
+    kty
+    use
+    key_ops
+    alg
+    kid
+    x5u
+    x5c
+    x5t
+    x5t_S256
+    e
+    d
+    k
+    n
+    p
+    q
+    x
+    y
+    dp
+    dq
+    qi
+    crv
+`;
+
+const { graphql } = require('graphql');
 const jwt = require('jsonwebtoken');
 const jwkToPem = require('jwk-to-pem');
 const debounce = require('lodash.debounce');
 
-function createValidator({ accepted,
-                           issued,
-                           resolver,
+function createValidator({ schema,
+                           createContext,
                            loadIssuerData,
-                           debounceTime = 0,
-                           acceptedTypeName = 'AcceptedServiceKeyQuery',
-                           issuedTypeName = 'IssuedServiceKeyQuery' }) {
+                           debounceTime = 0 }) {
 
-    const debouncedFindSigningKey = debounce(findSigningKey, debounceTime);
-    const signingTypes = {
-        issued: issued.getType(issuedTypeName),
-        accepted: accepted.getType(acceptedTypeName)
-    };
-
+    const debouncedFindVerificationKey = debounce(findVerificationKey, debounceTime);
     return validator;
 
     async function validator(token) {
         const decoded = jwt.decode(token, { complete: true });
 
-        let key;
-        if (signingTypes.accepted) {
-            key = await debouncedFindSigningKey('accepted', decoded.header.kid || decoded.payload.kid, decoded.payload.iss);
-        }
-        if (!key && issued) {
-            key = await debouncedFindSigningKey('issued', decoded.header.kid || decoded.payload.kid, decoded.payload.iss);
+        let key = await debouncedFindVerificationKey('accepted', decoded.header.kid || decoded.payload.kid, decoded.payload.iss);
+        if (!key) {
+            key = await debouncedFindVerificationKey('issued', decoded.header.kid || decoded.payload.kid, decoded.payload.iss);
         }
         if (!key) {
             throw new Error('key not found in accepted or issued schemas')
@@ -61,11 +76,25 @@ function createValidator({ accepted,
         }
     };
 
-    async function findSigningKey(type, kid, iss) {
-        const key = await resolver(signingTypes[type], 'find', {
-            kid,
-            iss
-        });
+    async function findVerificationKey(type, kid, iss) {
+        // TODO: Can we compile the query the first time or something?
+        const result = await graphql(schema, `
+            query FindVerificationKey($kid: String!, $iss: String!) {
+                serviceKey {
+                    ${type} {
+                        find(kid: $kid, iss: $iss) {
+                            ${SERVICE_KEY_FIELDS}
+                        }
+                    }
+                }
+            }
+        `, {}, createContext(), { kid, iss }, 'FindVerificationKey');
+
+        if (result.errors && result.errors.length) {
+            throw new Error(results.errors.map(error => error.message || error).join('\n'));
+        }
+
+        const key = result.serviceKey[type].find;
         if (key) {
             key = jwkToPem(key);
         }
@@ -73,8 +102,7 @@ function createValidator({ accepted,
     }
 }
 
-function createGenerator({ issued, issuedTypeName = 'IssuedServiceKey', debounceTime = 0, resolver }) {
-    const keyType = issued.getType(issuedTypeName);
+function createGenerator({ schema, debounceTime = 0 }) {
     const debouncedGetLatestKey = debounce(getLatestKey, debounceTime);
     return generate;
 
@@ -92,15 +120,27 @@ function createGenerator({ issued, issuedTypeName = 'IssuedServiceKey', debounce
     };
 
     async function getLatestKey() {
-        let connection = await resolver(keyType, 'list', {
-            first: 1,
-            order: [{ field: 'created', desc: true }]
-        });
-        if (connection.edges.length === 0) {
-            throw new Error(`Unable to find key to sign with!`);
+        const result = await graphql(schema, `
+            query FindVerificationKey($kid: String!, $iss: String!) {
+                serviceKey {
+                    issued {
+                        list(first: 1, order: [{ field: "created", desc: true }]) {
+                            edges {
+                                node {
+                                    ${SERVICE_KEY_FIELDS}
+                                }
+                            }
+                        }
+                    }
+        `);
+
+        if (result.errors && result.errors.length) {
+            throw new Error(results.errors.map(error => error.message || error).join('\n'));
         }
-        if (connected.edges.length) {
-            return jwkToPem(connected.edges[0].node, { private: true });
+
+        const latest = result.data.serviceKey.issued.list.edges[0];
+        if (latest) {
+            return jwkToPem(latest.node, { private: true });
         } else {
             return undefined;
         }
