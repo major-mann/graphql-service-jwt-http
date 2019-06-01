@@ -3,60 +3,41 @@ module.exports = createServiceContextCreator;
 const serviceHelper = require('@major-mann/graphql-helpers-service');
 const createContextCreator = require('./context.js');
 const { validator: createTokenValidator, generator: createTokenGenerator } = require('./token.js');
-const loadMasterData = require('./master-data-loader.js');
 
 async function createServiceContextCreator({ schema,
+                                             issuer,
                                              loadIssuerData,
                                              contextOptions,
-                                             serviceKeyOptions,
                                              fetchSigningKeyDebounce,
-                                             masterData }) {
+                                             fetchValidationKeyDebounce }) {
 
     const INTERNAL_USER = Symbol('internal-user');
     const INTERNAL_ISSUER = Symbol('internal-issuer');
 
     const createLogger = contextOptions && contextOptions.createLogger || (() => console);
 
-    const resolver = serviceHelper.graph({
-        createInfo: () => ({}),
-        createSource: () => ({}),
-        createContext: createInternalContext
-    });
-
     const tokenValidator = createTokenValidator({
-        resolver,
+        schema,
         loadIssuerData,
-        issued: schema,
-        accepted: schema,
-        acceptedTypeName: serviceKeyOptions && serviceKeyOptions.acceptedKeyTypeName,
-        issuedTypeName: serviceKeyOptions && serviceKeyOptions.issuedKeyTypeName
+        createContext: createInternalContext,
+        keyFetchDebounceTime: fetchValidationKeyDebounce
     });
 
     const tokenGenerator = createTokenGenerator({
-        issued: schema,
-        debounceTime: fetchSigningKeyDebounce,
-        issuedTypeName: serviceKeyOptions && serviceKeyOptions.issuedKeyTypeName
+        schema,
+        keyFetchDebounceTime: fetchSigningKeyDebounce
     });
 
     const createContext = createContextCreator({
         ...contextOptions,
-        INTERNAL_ISSUER,
-        INTERNAL_USER,
-        resolver,
+        isInternalUser,
+        isInternalIssuer,
         verifyRequestToken: tokenValidator,
         generateToken: (issuer, claims) => tokenGenerator({
             ...claims,
             iss: issuer
         })
     });
-
-    if (masterData) {
-        await loadMasterData({
-            schema,
-            resolver,
-            data: masterData
-        });
-    }
 
     return createContext;
 
@@ -67,10 +48,10 @@ async function createServiceContextCreator({ schema,
         };
         return {
             user,
-            issuer: undefined,
+            isInternalUser,
+            isInternalIssuer,
+            issuer: INTERNAL_ISSUER,
             log: createLogger(undefined, user),
-            isInternalUser: sub => sub === INTERNAL_USER,
-            isInternalIssuer: iss => iss === INTERNAL_ISSUER,
             stat: {
                 increment: () => undefined,
                 decrement: () => undefined,
@@ -81,5 +62,13 @@ async function createServiceContextCreator({ schema,
                 histogram: () => undefined,
             }
         };
+    }
+
+    function isInternalUser(sub) {
+        return sub === INTERNAL_USER;
+    }
+
+    function isInternalIssuer(iss) {
+        return iss === INTERNAL_ISSUER;
     }
 }

@@ -1,5 +1,4 @@
-module.exports = function createContextCreator({ resolver,
-                                                 verifyRequestToken,
+module.exports = function createContextCreator({ verifyRequestToken,
                                                  generateToken,
                                                  laxTokenHeader,
                                                  queryTokenName = 'token',
@@ -8,8 +7,8 @@ module.exports = function createContextCreator({ resolver,
                                                  tokenTypeName = 'bearer',
                                                  createLogger = defaultCreateLogger,
                                                  createStat = defaultCreateStat,
-                                                 INTERNAL_USER,
-                                                 INTERNAL_ISSUER
+                                                 isInternalUser,
+                                                 isInternalIssuer
 }) {
     return async function createContext({ req }) {
         const issuer = determineIssuer(req);
@@ -38,9 +37,8 @@ module.exports = function createContextCreator({ resolver,
             log,
             stat,
             user,
-            resolve: resolver,
-            isInternalUser: sub => sub === INTERNAL_USER,
-            isInternalIssuer: iss => iss === INTERNAL_ISSUER,
+            isInternalUser,
+            isInternalIssuer,
             token: {
                 generate: (claims, options) => generateToken(issuer, claims, options),
                 verify: token => verifyRequestToken(token)

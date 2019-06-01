@@ -36,9 +36,9 @@ const debounce = require('lodash.debounce');
 function createValidator({ schema,
                            createContext,
                            loadIssuerData,
-                           debounceTime = 0 }) {
+                           keyFetchDebounceTime = 0 }) {
 
-    const debouncedFindVerificationKey = debounce(findVerificationKey, debounceTime);
+    const debouncedFindVerificationKey = debounce(findVerificationKey, keyFetchDebounceTime);
     return validator;
 
     async function validator(token) {
@@ -102,8 +102,8 @@ function createValidator({ schema,
     }
 }
 
-function createGenerator({ schema, debounceTime = 0 }) {
-    const debouncedGetLatestKey = debounce(getLatestKey, debounceTime);
+function createGenerator({ schema, keyFetchDebounceTime = 0 }) {
+    const debouncedGetLatestKey = debounce(getLatestKey, keyFetchDebounceTime);
     return generate;
 
     async function generate(claims, options) {
@@ -121,7 +121,7 @@ function createGenerator({ schema, debounceTime = 0 }) {
 
     async function getLatestKey() {
         const result = await graphql(schema, `
-            query FindVerificationKey($kid: String!, $iss: String!) {
+            query FindLatestVerificationKey($kid: String!, $iss: String!) {
                 serviceKey {
                     issued {
                         list(first: 1, order: [{ field: "created", desc: true }]) {
@@ -132,6 +132,8 @@ function createGenerator({ schema, debounceTime = 0 }) {
                             }
                         }
                     }
+                }
+            }
         `);
 
         if (result.errors && result.errors.length) {
