@@ -1,6 +1,6 @@
 {
     "name": "@major-mann/graphql-context-jwt-http",
-    "version": "0.0.24",
+    "version": "0.0.25",
     "description": "A service module for serving a graphql schema with user context created using JWT",
     "main": "src/index.js",
     "author": "Calvin Mann <calvinmann@gmail.com>",
