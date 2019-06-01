@@ -1,6 +1,5 @@
 module.exports = createServiceContextCreator;
 
-const serviceHelper = require('@major-mann/graphql-helpers-service');
 const createContextCreator = require('./context.js');
 const { validator: createTokenValidator, generator: createTokenGenerator } = require('./token.js');
 
