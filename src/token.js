@@ -89,7 +89,7 @@ function createValidator({ schema,
                 }
             }
         `, createContext(), { kid, iss });
-        const key = result.serviceKey[type].find;
+        let key = result.serviceKey[type].find;
         if (key) {
             key = jwkToPem(key);
         }
