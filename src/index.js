@@ -4,7 +4,6 @@ const createContextCreator = require('./context.js');
 const { validator: createTokenValidator, generator: createTokenGenerator } = require('./token.js');
 
 async function createServiceContextCreator({ schema,
-                                             issuer,
                                              loadIssuerData,
                                              contextOptions,
                                              fetchSigningKeyDebounce,
@@ -37,7 +36,7 @@ async function createServiceContextCreator({ schema,
             iss: issuer
         })
     });
-
+    createContext.internal = createInternalContext;
     return createContext;
 
     function createInternalContext() {
