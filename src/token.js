@@ -53,7 +53,7 @@ function createValidator({ schema,
         }
 
         const info = await issuerData();
-        let claims = await verify(token, key, info && info.options);
+        let claims = await verify(token, key.key, info && info.options);
         const mask = info && info.mask;
         if (typeof mask === 'function') {
             claims = await mask(claims);
@@ -92,6 +92,10 @@ function createValidator({ schema,
         let key = result.serviceKey[type].find;
         if (key) {
             key = jwkToPem(key);
+            return {
+                kid: latest.node.kid,
+                key: jwkToPem(key)
+            };
         }
         return key;
     }
@@ -110,7 +114,15 @@ function createGenerator({ schema, createContext, keyFetchDebounceTime = 0 }) {
             iat: now
         };
 
-        const tokenData = await sign(claims, key, options);
+        options = options || {};
+        options.header = options.header || {};
+        const tokenData = await sign(claims, key.key, {
+            header: {
+                kid: key.kid,
+                ...options.header
+            },
+            ...options
+        });
         return tokenData;
     };
 
@@ -132,7 +144,10 @@ function createGenerator({ schema, createContext, keyFetchDebounceTime = 0 }) {
         `, createContext(), {});
         const latest = result.serviceKey.issued.list.edges[0];
         if (latest) {
-            return jwkToPem(latest.node, { private: true });
+            return {
+                kid: latest.node.kid,
+                key: jwkToPem(latest.node, { private: true })
+            };
         } else {
             return undefined;
         }
