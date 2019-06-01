@@ -91,10 +91,9 @@ function createValidator({ schema,
         `, createContext(), { kid, iss });
         let key = result.serviceKey[type].find;
         if (key) {
-            key = jwkToPem(key);
             return {
-                kid: latest.node.kid,
-                key: jwkToPem(key)
+                kid: key.kid,
+                key: jwkToPem(key.key)
             };
         }
         return key;
