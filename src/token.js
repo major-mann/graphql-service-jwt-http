@@ -78,7 +78,7 @@ function createValidator({ schema,
 
     async function findVerificationKey(type, kid, iss) {
         // TODO: Can we compile the query the first time or something?
-        const result = await graphql(schema, `
+        const result = await exec(schema, `
             query FindVerificationKey($kid: String!, $iss: String!) {
                 serviceKey {
                     ${type} {
@@ -88,12 +88,7 @@ function createValidator({ schema,
                     }
                 }
             }
-        `, {}, createContext(), { kid, iss }, 'FindVerificationKey');
-
-        if (result.errors && result.errors.length) {
-            throw new Error(results.errors.map(error => error.message || error).join('\n'));
-        }
-
+        `, createContext(), { kid, iss });
         const key = result.serviceKey[type].find;
         if (key) {
             key = jwkToPem(key);
@@ -102,7 +97,7 @@ function createValidator({ schema,
     }
 }
 
-function createGenerator({ schema, keyFetchDebounceTime = 0 }) {
+function createGenerator({ schema, createContext, keyFetchDebounceTime = 0 }) {
     const debouncedGetLatestKey = throttle(getLatestKey, keyFetchDebounceTime);
     return generate;
 
@@ -120,8 +115,8 @@ function createGenerator({ schema, keyFetchDebounceTime = 0 }) {
     };
 
     async function getLatestKey() {
-        const result = await graphql(schema, `
-            query FindLatestVerificationKey($kid: String!, $iss: String!) {
+        const result = await exec(schema, `
+            query FindLatestVerificationKey {
                 serviceKey {
                     issued {
                         list(first: 1, order: [{ field: "created", desc: true }]) {
@@ -134,13 +129,8 @@ function createGenerator({ schema, keyFetchDebounceTime = 0 }) {
                     }
                 }
             }
-        `);
-
-        if (result.errors && result.errors.length) {
-            throw new Error(results.errors.map(error => error.message || error).join('\n'));
-        }
-
-        const latest = result.data.serviceKey.issued.list.edges[0];
+        `, createContext(), {});
+        const latest = result.serviceKey.issued.list.edges[0];
         if (latest) {
             return jwkToPem(latest.node, { private: true });
         } else {
@@ -171,4 +161,12 @@ function verify(token, key, options) {
             }
         });
     });
+}
+
+async function exec(schema, query, context, variables) {
+    const result = await graphql(schema, query, {}, context, variables);
+    if (result.errors && result.errors.length) {
+        throw new Error(results.errors.map(error => error.message || error).join('\n'));
+    }
+    return result.data;
 }

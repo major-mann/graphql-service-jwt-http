@@ -23,6 +23,7 @@ async function createServiceContextCreator({ schema,
 
     const tokenGenerator = createTokenGenerator({
         schema,
+        createContext: createInternalContext,
         keyFetchDebounceTime: fetchSigningKeyDebounce
     });
 
