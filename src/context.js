@@ -15,7 +15,6 @@ function createContextCreator({ verifyRequestToken,
                                 isInternalIssuer
 }) {
     return async function createContext({ req }) {
-        const issuer = determineIssuer(req);
         const checks = {
             body: bodyTokenName && req.body && req.body[bodyTokenName],
             query: queryTokenName && req.query && req.query[queryTokenName],
@@ -44,7 +43,7 @@ function createContextCreator({ verifyRequestToken,
             isInternalUser,
             isInternalIssuer,
             token: {
-                generate: (claims, options) => generateToken(issuer, claims, options),
+                generate: (claims, options) => generateToken(claims, options),
                 verify: token => verifyRequestToken(token)
             }
         };

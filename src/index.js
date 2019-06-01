@@ -32,10 +32,7 @@ async function createServiceContextCreator({ schema,
         isInternalUser,
         isInternalIssuer,
         verifyRequestToken: tokenValidator,
-        generateToken: (issuer, claims) => tokenGenerator({
-            ...claims,
-            iss: issuer
-        })
+        generateToken: tokenGenerator
     });
     createContext.internal = createInternalContext;
     return createContext;
