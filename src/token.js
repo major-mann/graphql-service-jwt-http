@@ -180,7 +180,7 @@ function verify(token, key, options) {
 async function exec(schema, query, context, variables) {
     const result = await graphql(schema, query, {}, context, variables);
     if (result.errors && result.errors.length) {
-        throw new Error(results.errors.map(error => error.message || error).join('\n'));
+        throw new Error(result.errors.map(error => error.message || error).join('\n'));
     }
     return result.data;
 }
