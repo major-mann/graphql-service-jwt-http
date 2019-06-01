@@ -93,7 +93,7 @@ function createValidator({ schema,
         if (key) {
             return {
                 kid: key.kid,
-                key: jwkToPem(key.key)
+                key: jwkToPem(key)
             };
         }
         return key;
