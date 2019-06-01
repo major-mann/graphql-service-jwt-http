@@ -31,14 +31,14 @@ const SERVICE_KEY_FIELDS = `
 const { graphql } = require('graphql');
 const jwt = require('jsonwebtoken');
 const jwkToPem = require('jwk-to-pem');
-const debounce = require('lodash.debounce');
+const throttle = require('lodash.throttle');
 
 function createValidator({ schema,
                            createContext,
                            loadIssuerData,
                            keyFetchDebounceTime = 0 }) {
 
-    const debouncedFindVerificationKey = debounce(findVerificationKey, keyFetchDebounceTime);
+    const debouncedFindVerificationKey = throttle(findVerificationKey, keyFetchDebounceTime);
     return validator;
 
     async function validator(token) {
@@ -103,7 +103,7 @@ function createValidator({ schema,
 }
 
 function createGenerator({ schema, keyFetchDebounceTime = 0 }) {
-    const debouncedGetLatestKey = debounce(getLatestKey, keyFetchDebounceTime);
+    const debouncedGetLatestKey = throttle(getLatestKey, keyFetchDebounceTime);
     return generate;
 
     async function generate(claims, options) {
