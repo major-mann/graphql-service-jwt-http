@@ -116,11 +116,11 @@ function createGenerator({ schema, createContext, keyFetchDebounceTime = 0 }) {
         options = options || {};
         options.header = options.header || {};
         const tokenData = await sign(claims, key.key, {
+            ...options,
             header: {
                 kid: key.kid,
                 ...options.header
-            },
-            ...options
+            }
         });
         return tokenData;
     };
