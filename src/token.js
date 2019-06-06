@@ -89,10 +89,10 @@ function createValidator({ schema,
     async function findVerificationKey(type, kid, iss, aud) {
         // TODO: Can we compile the query the first time or something?
         const result = await exec(schema, `
-            query FindVerificationKey($kid: String!, $iss: String!) {
+            query FindVerificationKey($kid: String!, $iss: String!, $aud: String!) {
                 serviceKey {
                     ${type} {
-                        find(kid: $kid, iss: $iss) {
+                        find(kid: $kid, iss: $iss, aud: $aud) {
                             ${SERVICE_KEY_FIELDS}
                         }
                     }
