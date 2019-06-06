@@ -62,7 +62,7 @@ function createContextCreator({ verifyRequestToken,
                         throw new Error(`Token expired at ${ex.expiredAt.toISOString()}`);
                     default: {
                         const id = uuid.v4().replace(/-/g, ``);
-                        createLogger(req).log(`Invalid token "${token}" received in ${source}. ${id} ` +
+                        createLogger(req).warn(`Unable to validate token "${token}" received in ${source}. ${id} ` +
                             `${ex.name} ${ex.stack}`);
                         throw new Error(`Internal server error. Please send "${id}" to support to assist with ` +
                             `identifying error`);

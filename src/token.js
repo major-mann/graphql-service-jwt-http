@@ -59,7 +59,8 @@ function createValidator({ schema,
             );
         }
         if (!key) {
-            throw new Error(`key not found in accepted or issued schemas`);
+            throw new Error(`key not found in accepted or issued schemas (iss: "${decoded.payload.iss}", ` +
+                `kid: "${decoded.header.kid || decoded.payload.kid}", aud: ${decoded.payload.aud})`);
         }
 
         const info = await issuerData();
