@@ -190,6 +190,9 @@ function verify(token, key, options) {
 async function exec(schema, query, context, variables) {
     const result = await graphql(schema, query, {}, context, variables);
     if (result.errors && result.errors.length) {
+        if (result.errors.length === 1 && result.errors[0] instanceof Error) {
+            throw result.errors[0];
+        }
         throw new Error(result.errors.map(error => error.message || error).join(`\n`));
     }
     return result.data;
