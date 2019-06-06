@@ -1,7 +1,7 @@
 module.exports = createServiceContextCreator;
 
-const createContextCreator = require('./context.js');
-const { validator: createTokenValidator, generator: createTokenGenerator } = require('./token.js');
+const createContextCreator = require(`./context.js`);
+const { validator: createTokenValidator, generator: createTokenGenerator } = require(`./token.js`);
 
 async function createServiceContextCreator({ schema,
                                              loadIssuerData,
@@ -9,8 +9,8 @@ async function createServiceContextCreator({ schema,
                                              fetchSigningKeyDebounce,
                                              fetchValidationKeyDebounce }) {
 
-    const INTERNAL_USER = Symbol('internal-user');
-    const INTERNAL_ISSUER = Symbol('internal-issuer');
+    const INTERNAL_USER = Symbol(`internal-user`);
+    const INTERNAL_ISSUER = Symbol(`internal-issuer`);
 
     const createLogger = contextOptions && contextOptions.createLogger || (() => console);
 

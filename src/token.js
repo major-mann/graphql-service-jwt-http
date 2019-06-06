@@ -28,10 +28,10 @@ const SERVICE_KEY_FIELDS = `
     crv
 `;
 
-const { graphql } = require('graphql');
-const jwt = require('jsonwebtoken');
-const jwkToPem = require('jwk-to-pem');
-const throttle = require('lodash.throttle');
+const { graphql } = require(`graphql`);
+const jwt = require(`jsonwebtoken`);
+const jwkToPem = require(`jwk-to-pem`);
+const throttle = require(`lodash.throttle`);
 
 function createValidator({ schema,
                            createContext,
@@ -44,18 +44,28 @@ function createValidator({ schema,
     async function validator(token) {
         const decoded = jwt.decode(token, { complete: true });
 
-        let key = await debouncedFindVerificationKey('accepted', decoded.header.kid || decoded.payload.kid, decoded.payload.iss);
+        let key = await debouncedFindVerificationKey(
+            `accepted`,
+            decoded.header.kid || decoded.payload.kid,
+            decoded.payload.iss,
+            decoded.payload.aud
+        );
         if (!key) {
-            key = await debouncedFindVerificationKey('issued', decoded.header.kid || decoded.payload.kid, decoded.payload.iss);
+            key = await debouncedFindVerificationKey(
+                `issued`,
+                decoded.header.kid || decoded.payload.kid,
+                decoded.payload.iss,
+                decoded.payload.aud
+            );
         }
         if (!key) {
-            throw new Error('key not found in accepted or issued schemas')
+            throw new Error(`key not found in accepted or issued schemas`);
         }
 
         const info = await issuerData();
         let claims = await verify(token, key.key, info && info.options);
         const mask = info && info.mask;
-        if (typeof mask === 'function') {
+        if (typeof mask === `function`) {
             claims = await mask(claims);
         }
         if (info && info.claims) {
@@ -67,16 +77,16 @@ function createValidator({ schema,
         return claims;
 
         async function issuerData() {
-            if (typeof loadIssuerData === 'function') {
+            if (typeof loadIssuerData === `function`) {
                 const data = await loadIssuerData(decoded.payload.iss);
                 return data;
             } else {
                 return undefined;
             }
         }
-    };
+    }
 
-    async function findVerificationKey(type, kid, iss) {
+    async function findVerificationKey(type, kid, iss, aud) {
         // TODO: Can we compile the query the first time or something?
         const result = await exec(schema, `
             query FindVerificationKey($kid: String!, $iss: String!) {
@@ -88,7 +98,7 @@ function createValidator({ schema,
                     }
                 }
             }
-        `, createContext(), { kid, iss });
+        `, createContext(), { kid, iss, aud });
         let key = result.serviceKey[type].find;
         if (key) {
             return {
@@ -123,7 +133,7 @@ function createGenerator({ schema, createContext, keyFetchDebounceTime = 0 }) {
             }
         });
         return tokenData;
-    };
+    }
 
     async function getLatestKey() {
         const result = await exec(schema, `
@@ -180,7 +190,7 @@ function verify(token, key, options) {
 async function exec(schema, query, context, variables) {
     const result = await graphql(schema, query, {}, context, variables);
     if (result.errors && result.errors.length) {
-        throw new Error(result.errors.map(error => error.message || error).join('\n'));
+        throw new Error(result.errors.map(error => error.message || error).join(`\n`));
     }
     return result.data;
 }
