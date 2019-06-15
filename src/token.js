@@ -83,7 +83,7 @@ function createValidator({ schema,
             });
             const key = await keySearcher(
                 params,
-                `accepted`,
+                type,
                 decoded.header.kid || decoded.payload.kid,
                 decoded.payload.iss,
                 decoded.payload.aud
@@ -173,9 +173,9 @@ function createGenerator({ schema, createContext, keyFetchThrottleTime = 0 }) {
     }
 
     async function getLatestKey(aud, params) {
-        const filter = [{ field: `aud`, op: `EQ`, value: aud }];
+        const filter = { field: `aud`, op: `EQ`, value: aud };
         const result = await exec(schema, gql`
-            query FindLatestVerificationKey($filter: DataSourceFilterInput) {
+            query FindLatestVerificationKey($filter: DataSourceFilterInput!) {
                 serviceKey {
                     issued {
                         list(first: 1, order: [{ field: "created", desc: true }], filter: [$filter]) {
