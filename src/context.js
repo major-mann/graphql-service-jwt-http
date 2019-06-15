@@ -12,11 +12,12 @@ function createContextCreator({ verifyRequestToken,
                                 createLogger = defaultCreateLogger,
                                 createStat = defaultCreateStat
 }) {
-    return async function createContext({ req }) {
+    return async function createContext({ req } = {}) {
         const checks = {
-            body: bodyTokenName && req.body && req.body[bodyTokenName],
-            query: queryTokenName && req.query && req.query[queryTokenName],
+            body: bodyTokenName && req && req.body && req.body[bodyTokenName],
+            query: queryTokenName && req && req.query && req.query[queryTokenName],
             [`authorization header (${authorizationHeaderName})`]: authorizationHeaderName &&
+                req &&
                 req.headers[authorizationHeaderName] &&
                 extractBearer(req.headers[authorizationHeaderName])
         };
