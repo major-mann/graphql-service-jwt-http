@@ -28,35 +28,32 @@ const SERVICE_KEY_FIELDS = `
     crv
 `;
 
+const THROTTLE_PARAMS = [`type`, `kid`, `iss`, `aud`];
+
 const { graphql } = require(`graphql`);
 const jwt = require(`jsonwebtoken`);
 const jwkToPem = require(`jwk-to-pem`);
 const throttle = require(`lodash.throttle`);
 
+const gql = (...args) => args.join(``);
+
 function createValidator({ schema,
                            createContext,
                            loadIssuerData,
-                           keyFetchDebounceTime = 0 }) {
-
-    const debouncedFindVerificationKey = throttle(findVerificationKey, keyFetchDebounceTime);
+                           keyFetchThrottleTime = 0 }) {
+    const searcher = {};
     return validator;
 
-    async function validator(token) {
+    async function validator(token, params) {
         const decoded = jwt.decode(token, { complete: true });
+        params = params || {
+            source: {},
+            context: createContext()
+        };
 
-        let key = await debouncedFindVerificationKey(
-            `accepted`,
-            decoded.header.kid || decoded.payload.kid,
-            decoded.payload.iss,
-            decoded.payload.aud
-        );
+        let key = await keySearch(`accepted`);
         if (!key) {
-            key = await debouncedFindVerificationKey(
-                `issued`,
-                decoded.header.kid || decoded.payload.kid,
-                decoded.payload.iss,
-                decoded.payload.aud
-            );
+            key = await keySearch(`issued`);
         }
         if (!key) {
             throw new Error(`key not found in accepted or issued schemas (iss: "${decoded.payload.iss}", ` +
@@ -77,6 +74,23 @@ function createValidator({ schema,
         }
         return claims;
 
+        async function keySearch(type) {
+            const keySearcher = getKeySearcher({
+                type,
+                kid: decoded.header.kid || decoded.payload.kid,
+                iss: decoded.payload.iss,
+                aud: decoded.payload.aud
+            });
+            const key = await keySearcher(
+                params,
+                `accepted`,
+                decoded.header.kid || decoded.payload.kid,
+                decoded.payload.iss,
+                decoded.payload.aud
+            );
+            return key;
+        }
+
         async function issuerData() {
             if (typeof loadIssuerData === `function`) {
                 const data = await loadIssuerData(decoded.payload.iss);
@@ -87,9 +101,9 @@ function createValidator({ schema,
         }
     }
 
-    async function findVerificationKey(type, kid, iss, aud) {
+    async function findVerificationKey(params, type, kid, iss, aud) {
         // TODO: Can we compile the query the first time or something?
-        const result = await exec(schema, `
+        const result = await exec(schema, gql`
             query FindVerificationKey($kid: String!, $iss: String!, $aud: String!) {
                 serviceKey {
                     ${type} {
@@ -99,7 +113,7 @@ function createValidator({ schema,
                     }
                 }
             }
-        `, createContext(), { kid, iss, aud });
+        `, params.source, params.context, { kid, iss, aud });
         let key = result.serviceKey[type].find;
         if (key) {
             return {
@@ -109,14 +123,29 @@ function createValidator({ schema,
         }
         return key;
     }
+
+    function getKeySearcher(args) {
+        const cacheName = THROTTLE_PARAMS
+            .map(param => args[param])
+            .join(`:::`);
+        if (!searcher[cacheName]) {
+            searcher[cacheName] = throttle(findVerificationKey, keyFetchThrottleTime);
+        }
+        return searcher[cacheName];
+    }
 }
 
-function createGenerator({ schema, createContext, keyFetchDebounceTime = 0 }) {
-    const debouncedGetLatestKey = throttle(getLatestKey, keyFetchDebounceTime);
+function createGenerator({ schema, createContext, keyFetchThrottleTime = 0 }) {
+    const searcher = {};
     return generate;
 
-    async function generate(claims, options) {
-        const key = await debouncedGetLatestKey();
+    async function generate(claims, options, params) {
+        params = params || {
+            source: {},
+            context: createContext()
+        };
+        const keySearcher = getKeySearcher(claims.aud);
+        const key = await keySearcher(claims.aud, params);
 
         const now = Math.floor(Date.now() / 1000);
         claims = {
@@ -136,12 +165,20 @@ function createGenerator({ schema, createContext, keyFetchDebounceTime = 0 }) {
         return tokenData;
     }
 
-    async function getLatestKey() {
-        const result = await exec(schema, `
-            query FindLatestVerificationKey {
+    function getKeySearcher(aud) {
+        if (!searcher[aud]) {
+            searcher[aud] = throttle(getLatestKey, keyFetchThrottleTime);
+        }
+        return searcher[aud];
+    }
+
+    async function getLatestKey(aud, params) {
+        const filter = [{ field: `aud`, op: `EQ`, value: aud }];
+        const result = await exec(schema, gql`
+            query FindLatestVerificationKey($filter: DataSourceFilterInput) {
                 serviceKey {
                     issued {
-                        list(first: 1, order: [{ field: "created", desc: true }]) {
+                        list(first: 1, order: [{ field: "created", desc: true }], filter: [$filter]) {
                             edges {
                                 node {
                                     ${SERVICE_KEY_FIELDS}
@@ -151,7 +188,7 @@ function createGenerator({ schema, createContext, keyFetchDebounceTime = 0 }) {
                     }
                 }
             }
-        `, createContext(), {});
+        `, params.source, params.context, { filter });
         const latest = result.serviceKey.issued.list.edges[0];
         if (latest) {
             return {
@@ -188,8 +225,8 @@ function verify(token, key, options) {
     });
 }
 
-async function exec(schema, query, context, variables) {
-    const result = await graphql(schema, query, {}, context, variables);
+async function exec(schema, query, source, context, variables) {
+    const result = await graphql(schema, query, source, context, variables);
     if (result.errors && result.errors.length) {
         if (result.errors.length === 1 && result.errors[0] instanceof Error) {
             throw result.errors[0];

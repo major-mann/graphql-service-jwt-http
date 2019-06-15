@@ -10,9 +10,7 @@ function createContextCreator({ verifyRequestToken,
                                 authorizationHeaderName = `authorization`,
                                 tokenTypeName = `bearer`,
                                 createLogger = defaultCreateLogger,
-                                createStat = defaultCreateStat,
-                                isInternalUser,
-                                isInternalIssuer
+                                createStat = defaultCreateStat
 }) {
     return async function createContext({ req }) {
         const checks = {
@@ -40,19 +38,17 @@ function createContextCreator({ verifyRequestToken,
             log,
             stat,
             user,
-            isInternalUser,
-            isInternalIssuer,
             token: {
-                generate: (claims, options) => generateToken(claims, options),
-                verify: token => verifyRequestToken(token)
+                generate: (claims, options, params) => generateToken(claims, options, params),
+                verify: (token, params) => verifyRequestToken(token, params)
             }
         };
 
         return context;
 
-        async function verifyToken(source, token) {
+        async function verifyToken(source, token, params) {
             try {
-                const claims = await verifyRequestToken(token);
+                const claims = await verifyRequestToken(token, params);
                 return claims;
             } catch (ex) {
                 switch (ex.name) {

@@ -6,65 +6,52 @@ const { validator: createTokenValidator, generator: createTokenGenerator } = req
 async function createServiceContextCreator({ schema,
                                              loadIssuerData,
                                              contextOptions,
-                                             fetchSigningKeyDebounce,
-                                             fetchValidationKeyDebounce }) {
+                                             fetchSigningKeyThrottle,
+                                             fetchValidationKeyThrottle }) {
 
-    const INTERNAL_USER = Symbol(`internal-user`);
-    const INTERNAL_ISSUER = Symbol(`internal-issuer`);
-
-    const createLogger = contextOptions && contextOptions.createLogger || (() => console);
+    const createLogger = contextOptions && contextOptions.createLogger || defaultCreateLogger;
+    const createStat = contextOptions && contextOptions.createStat || defaultCreateStat;
 
     const tokenValidator = createTokenValidator({
         schema,
         loadIssuerData,
         createContext: createInternalContext,
-        keyFetchDebounceTime: fetchValidationKeyDebounce
+        keyFetchThrottleTime: fetchValidationKeyThrottle
     });
 
     const tokenGenerator = createTokenGenerator({
         schema,
         createContext: createInternalContext,
-        keyFetchDebounceTime: fetchSigningKeyDebounce
+        keyFetchThrottleTime: fetchSigningKeyThrottle
     });
 
     const createContext = createContextCreator({
         ...contextOptions,
-        isInternalUser,
-        isInternalIssuer,
         verifyRequestToken: tokenValidator,
         generateToken: tokenGenerator
     });
-    createContext.internal = createInternalContext;
     return createContext;
 
     function createInternalContext() {
-        const user = {
-            sub: INTERNAL_USER,
-            iss: INTERNAL_ISSUER
-        };
         return {
-            user,
-            isInternalUser,
-            isInternalIssuer,
-            issuer: INTERNAL_ISSUER,
-            log: createLogger(undefined, user),
-            stat: {
-                increment: () => undefined,
-                decrement: () => undefined,
-                counter: () => undefined,
-                gauge: () => undefined,
-                gaugeDelta: () => undefined,
-                set: () => undefined,
-                histogram: () => undefined,
-            }
+            log: createLogger(),
+            stat: createStat()
         };
     }
 
-    function isInternalUser(sub) {
-        return sub === INTERNAL_USER;
+    function defaultCreateLogger() {
+        return console;
     }
 
-    function isInternalIssuer(iss) {
-        return iss === INTERNAL_ISSUER;
+    function defaultCreateStat() {
+        return {
+            increment: () => undefined,
+            decrement: () => undefined,
+            counter: () => undefined,
+            gauge: () => undefined,
+            gaugeDelta: () => undefined,
+            set: () => undefined,
+            histogram: () => undefined,
+        };
     }
 }
