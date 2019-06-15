@@ -35,7 +35,7 @@ const jwt = require(`jsonwebtoken`);
 const jwkToPem = require(`jwk-to-pem`);
 const throttle = require(`lodash.throttle`);
 
-const gql = (...args) => args.join(``);
+const gql = (strings, ...params) => strings.map((str, idx) => `${str}${params[idx] || ``}`).join(``);
 
 function createValidator({ schema,
                            createContext,
