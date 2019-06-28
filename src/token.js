@@ -61,12 +61,20 @@ function createValidator({ schema,
         }
 
         const info = await issuerData();
-        let claims = await verify(token, key.key, info && info.options);
-        const mask = info && info.mask;
-        if (typeof mask === `function`) {
-            claims = await mask(claims);
+        if (!info) {
+            throw new Error(`No issuer data for issuer "${decoded.payload.iss}" could be found!`);
         }
-        if (info && info.claims) {
+
+        let claims = await verify(token, key.key, info.options);
+        if (typeof info.mask === `function`) {
+            claims = await info.mask(claims);
+        } else if (Array.isArray(info.mask)) {
+            claims = info.mask.reduce((result, name) => {
+                result[name] = claims[name];
+                return result;
+            }, {});
+        }
+        if (info.claims) {
             claims = {
                 claims,
                 ...info.claims
